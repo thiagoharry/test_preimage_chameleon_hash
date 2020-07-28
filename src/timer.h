@@ -6,9 +6,9 @@
 #include <sys/time.h>
 #include <math.h>
 
-unsigned long t_sum = 0;
-unsigned long measures[N];
-int _i = 0;
+static unsigned long t_sum = 0;
+static unsigned long measures[N];
+static int _i = 0;
 #define TIMER_BEGIN() { struct timeval _begin, _end;	\
   gettimeofday(&_begin, NULL);
 #define TIMER_END() gettimeofday(&_end, NULL);		  \

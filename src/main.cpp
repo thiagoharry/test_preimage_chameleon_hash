@@ -6,7 +6,7 @@
 #include <fstream>
 #include "chameleon_hash.h"
 #include "context.h"
-
+#include "test_bliss.h"
 
 #define N 1000 // Number of times we measure each function
 #include "timer.h"
@@ -41,6 +41,54 @@ size_t palisade_vector_size(NativePoly v){
 
 size_t palisade_matrix_size(Matrix<NativePoly> m){
   return m.GetRows() * m.GetCols() * palisade_vector_size(m(0, 0));
+}
+
+void test_gpv_signature(usint ringsize, usint bits, usint base){
+  SignatureContext<NativePoly> context;
+  int i;
+  context.GenerateGPVContext(ringsize, bits, base);
+
+  GPVVerificationKey<NativePoly> vk;
+  GPVSignKey<NativePoly> sk;
+
+  printf("========== GPV Signature (n=%d, bits de k=%d, base=%d)\n",
+	 ringsize, bits, base);
+
+  for(i = 0; i < N; i ++){
+    TIMER_BEGIN();
+    context.KeyGen(&sk,&vk);
+    TIMER_END();
+  }
+  TIMER_RESULT("KeyGen");
+
+  // Signing
+  for(i = 0; i < N; i ++){
+    string pt1 = get_random_string();
+    GPVSignature<NativePoly> r2;
+    GPVPlaintext<NativePoly> plaintext1(pt1);
+    context.KeyGen(&sk,&vk);
+    TIMER_BEGIN();
+    context.Sign(plaintext1, sk, vk, &r2);
+    TIMER_END();
+  }
+  TIMER_RESULT("Sign");
+
+  // Verifying
+  for(i = 0; i < N; i ++){
+    bool result;
+    string pt1 = get_random_string();
+    GPVSignature<NativePoly> r2;
+    GPVPlaintext<NativePoly> plaintext1(pt1);
+    context.KeyGen(&sk,&vk);
+    context.Sign(plaintext1, sk, vk, &r2);
+    TIMER_BEGIN();
+    result = context.Verify(plaintext1, r2, vk);
+    TIMER_END();
+    if(!result)
+      fprintf(stderr, "ERROR: GPV Signature Verification failed!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+  }
+  TIMER_RESULT("Verify");
+  printf("Key sizes are equal preimage chameleon hash with same parameters.\n");
 }
 
 void test_chameleon_hash(usint ringsize, usint bits, usint base){
@@ -79,6 +127,7 @@ void test_chameleon_hash(usint ringsize, usint bits, usint base){
   // Measuring hash 
   NativePoly digest1;
   for(i = 0; i < N; i ++){
+    context.KeyGen(&sk,&vk);
     string pt = get_random_string();
     GPVPlaintext<NativePoly> plaintext(pt);
     TIMER_BEGIN();
@@ -91,30 +140,21 @@ void test_chameleon_hash(usint ringsize, usint bits, usint base){
   GPVSignature<NativePoly> r2;
   NativePoly digest2;
   for(i = 0; i < N; i ++){
+    string pt1 = get_random_string();
     string pt2 = get_random_string();
+    GPVPlaintext<NativePoly> plaintext1(pt1);
     GPVPlaintext<NativePoly> plaintext2(pt2);
+    context.KeyGen(&sk,&vk);
+    context.Hash(plaintext1,r,vk, &digest1);
     TIMER_BEGIN();
     context.Preimage(plaintext2, digest1, sk, vk, &r2);
     TIMER_END();
-    if(i == N - 1)
-      context.Hash(plaintext2,r2,vk, &digest2);
-  }
-  TIMER_RESULT("Preimage");
-
-  // Just checking that the result is correct:
-  {
+    context.Hash(plaintext2,r2,vk, &digest2);
     if(digest1 != digest2){
       std::cout << "ERROR: Preimage returned incorrect value!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl ;
     }
-    string pt = get_random_string();
-    GPVPlaintext<NativePoly> plaintext(pt);
-    NativePoly digest3;
-    context.Hash(plaintext,r2,vk, &digest3);
-    if(digest3 == digest2){
-      std::cout << "ERROR: New collision found without trapdoor! This is shouldn't happen except with negligible probabilty!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl ;
-    }
   }
-
+  TIMER_RESULT("Preimage");
 
   
     //std::cout << digest1[5] << std::endl;
@@ -153,19 +193,23 @@ void test_rsa(int n){
     rsa = RSA_new();
   }
   TIMER_RESULT("KeyGen");
-  RSA_generate_key_ex(rsa, n, bn, NULL);
-  EVP_PKEY_assign_RSA(pkey, rsa);
+  
 
   for(i = 0; i < N; i ++){
     unsigned char encMessage[2048];
     unsigned int encMessageLength;
     string plainText = get_random_string();
     char digest[65];
+    RSA_generate_key_ex(rsa, n, bn, NULL);
+    EVP_PKEY_assign_RSA(pkey, rsa);
     TIMER_BEGIN();
     sha256_string(plainText.c_str(), digest);
     RSA_sign(NID_sha256, (const unsigned char *) digest, 65, &encMessage[0],
 	     &encMessageLength, rsa);
     TIMER_END();
+    EVP_PKEY_free(pkey);
+    pkey = EVP_PKEY_new();
+    rsa = RSA_new();
   }
   TIMER_RESULT("Sign");
 
@@ -175,6 +219,9 @@ void test_rsa(int n){
     string plainText = get_random_string();
     char digest[65];
     int verif;
+    RSA_generate_key_ex(rsa, n, bn, NULL);
+    EVP_PKEY_assign_RSA(pkey, rsa);
+
     sha256_string(plainText.c_str(), digest);
     RSA_sign(NID_sha256, (const unsigned char *) digest, 65, &encMessage[0],
 	     &encMessageLength, rsa);
@@ -185,10 +232,18 @@ void test_rsa(int n){
     signature_size = encMessageLength;
     if(verif == 0)
       fprintf(stderr, "ERROR: RSA with wrong signature!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+    EVP_PKEY_free(pkey);
+    pkey = EVP_PKEY_new();
+    rsa = RSA_new();
   }
+
   TIMER_RESULT("Verify");
   std::cout << "'σ'    size: " << signature_size << " bytes" << std::endl;
 
+    RSA_generate_key_ex(rsa, n, bn, NULL);
+    EVP_PKEY_assign_RSA(pkey, rsa);
+
+  
   {
     const BIGNUM *n, *e, *d;
     RSA_get0_key(rsa, &n, &e, &d);
@@ -214,17 +269,18 @@ void test_ecdsa(int nid){
   }
   TIMER_RESULT("KeyGen");
 
-  key = EC_KEY_new_by_curve_name(nid);
-  EC_KEY_generate_key(key);
 
   for(i = 0; i < N; i ++){
     string plainText = get_random_string();
     char digest[65];
+    key = EC_KEY_new_by_curve_name(nid);
+    EC_KEY_generate_key(key);
     TIMER_BEGIN();
     sha256_string(plainText.c_str(),  digest);
     signature = ECDSA_do_sign((const unsigned char *) digest, 65, key);
     TIMER_END();
     ECDSA_SIG_free(signature);
+    EC_KEY_free(key);
   }
   TIMER_RESULT("Sign");
 
@@ -233,6 +289,8 @@ void test_ecdsa(int nid){
     char digest[65];
     int verif;
     const BIGNUM *r, *s;
+    key = EC_KEY_new_by_curve_name(nid);
+    EC_KEY_generate_key(key);
     sha256_string(plainText.c_str(),  digest);
     signature = ECDSA_do_sign((const unsigned char *) digest, 65, key);
     TIMER_BEGIN();
@@ -243,11 +301,15 @@ void test_ecdsa(int nid){
     ECDSA_SIG_get0(signature, &r, &s);
     signature_size = BN_num_bytes(r) + BN_num_bytes(s);
     ECDSA_SIG_free(signature);
+    EC_KEY_free(key);
   }
   TIMER_RESULT("Verify");
 
   std::cout << "'σ'    size: " << signature_size << " bytes" << std::endl;
 
+    key = EC_KEY_new_by_curve_name(nid);
+    EC_KEY_generate_key(key);
+  
   {
     const EC_POINT *pk = EC_KEY_get0_public_key(key);
     unsigned char *buf;
@@ -266,17 +328,17 @@ void test_ecdsa(int nid){
     const BIGNUM *sk = EC_KEY_get0_private_key(key);
     std::cout << "'SK'   size: " << BN_num_bytes(sk) << " bytes" << std::endl;
   }
-
-
   EC_KEY_free(key);
 }
 
+
 int main(int argc, char **argv){
 
-  test_rsa(1024);
-  test_ecdsa(NID_X9_62_prime192v1);
-  test_chameleon_hash_512();
-  test_chameleon_hash_1024();
+  //test_rsa(2048);
+  //test_ecdsa(NID_sect233r1);
+  test_bliss(BLISS_B_I);
+  //test_chameleon_hash(512, 27, 2);
+  //test_gpv_signature(512, 27, 2);
 
   
   return 0;
