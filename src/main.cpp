@@ -7,8 +7,9 @@
 #include "chameleon_hash.h"
 #include "context.h"
 #include "test_bliss.h"
+#include "test_dilithium.h"
 
-#define N 1000 // Number of times we measure each function
+#define NTESTS 1000 // Number of times we measure each function
 #include "timer.h"
 
 using namespace lbcrypto;
@@ -54,7 +55,7 @@ void test_gpv_signature(usint ringsize, usint bits, usint base){
   printf("========== GPV Signature (n=%d, bits de k=%d, base=%d)\n",
 	 ringsize, bits, base);
 
-  for(i = 0; i < N; i ++){
+  for(i = 0; i < NTESTS; i ++){
     TIMER_BEGIN();
     context.KeyGen(&sk,&vk);
     TIMER_END();
@@ -62,7 +63,7 @@ void test_gpv_signature(usint ringsize, usint bits, usint base){
   TIMER_RESULT("KeyGen");
 
   // Signing
-  for(i = 0; i < N; i ++){
+  for(i = 0; i < NTESTS; i ++){
     string pt1 = get_random_string();
     GPVSignature<NativePoly> r2;
     GPVPlaintext<NativePoly> plaintext1(pt1);
@@ -74,7 +75,7 @@ void test_gpv_signature(usint ringsize, usint bits, usint base){
   TIMER_RESULT("Sign");
 
   // Verifying
-  for(i = 0; i < N; i ++){
+  for(i = 0; i < NTESTS; i ++){
     bool result;
     string pt1 = get_random_string();
     GPVSignature<NativePoly> r2;
@@ -109,7 +110,7 @@ void test_chameleon_hash(usint ringsize, usint bits, usint base){
   // to measure the original function because in the GPV context we
   // used a nonstandard seed function to deal with a conflict in the
   // linking phase
-  for(i = 0; i < N; i ++){
+  for(i = 0; i < NTESTS; i ++){
     TIMER_BEGIN();
     test_context.KeyGen(&sk,&vk);
     TIMER_END();
@@ -126,7 +127,7 @@ void test_chameleon_hash(usint ringsize, usint bits, usint base){
 
   // Measuring hash 
   NativePoly digest1;
-  for(i = 0; i < N; i ++){
+  for(i = 0; i < NTESTS; i ++){
     context.KeyGen(&sk,&vk);
     string pt = get_random_string();
     GPVPlaintext<NativePoly> plaintext(pt);
@@ -139,7 +140,7 @@ void test_chameleon_hash(usint ringsize, usint bits, usint base){
   // Measuring preimage
   GPVSignature<NativePoly> r2;
   NativePoly digest2;
-  for(i = 0; i < N; i ++){
+  for(i = 0; i < NTESTS; i ++){
     string pt1 = get_random_string();
     string pt2 = get_random_string();
     GPVPlaintext<NativePoly> plaintext1(pt1);
@@ -183,7 +184,7 @@ void test_rsa(int n){
   rsa = RSA_new();
   bn = BN_new();
   BN_set_word(bn, RSA_F4);
-  for(i = 0; i < N; i ++){
+  for(i = 0; i < NTESTS; i ++){
     TIMER_BEGIN();
     RSA_generate_key_ex(rsa, n, bn, NULL);
     TIMER_END();
@@ -195,7 +196,7 @@ void test_rsa(int n){
   TIMER_RESULT("KeyGen");
   
 
-  for(i = 0; i < N; i ++){
+  for(i = 0; i < NTESTS; i ++){
     unsigned char encMessage[2048];
     unsigned int encMessageLength;
     string plainText = get_random_string();
@@ -213,7 +214,7 @@ void test_rsa(int n){
   }
   TIMER_RESULT("Sign");
 
-  for(i = 0; i < N; i ++){
+  for(i = 0; i < NTESTS; i ++){
     unsigned char encMessage[2048];
     unsigned int encMessageLength;
     string plainText = get_random_string();
@@ -260,7 +261,7 @@ void test_ecdsa(int nid){
   size_t signature_size;
   printf("========== ECDSA SIGNATURE (curve=%d)\n", nid);
 
-  for(i = 0; i < N; i ++){
+  for(i = 0; i < NTESTS; i ++){
     key = EC_KEY_new_by_curve_name(nid);
     TIMER_BEGIN();
     EC_KEY_generate_key(key);
@@ -270,7 +271,7 @@ void test_ecdsa(int nid){
   TIMER_RESULT("KeyGen");
 
 
-  for(i = 0; i < N; i ++){
+  for(i = 0; i < NTESTS; i ++){
     string plainText = get_random_string();
     char digest[65];
     key = EC_KEY_new_by_curve_name(nid);
@@ -284,7 +285,7 @@ void test_ecdsa(int nid){
   }
   TIMER_RESULT("Sign");
 
-  for(i = 0; i < N; i ++){
+  for(i = 0; i < NTESTS; i ++){
     string plainText = get_random_string();
     char digest[65];
     int verif;
@@ -336,10 +337,11 @@ int main(int argc, char **argv){
 
   //test_rsa(2048);
   //test_ecdsa(NID_sect233r1);
-  test_bliss(BLISS_B_I);
+  test_dilithium();
+  //test_bliss(BLISS_B_I);
   //test_chameleon_hash(512, 27, 2);
   //test_gpv_signature(512, 27, 2);
-
   
   return 0;
 }
+

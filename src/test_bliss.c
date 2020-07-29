@@ -2,19 +2,16 @@
 #include "test_bliss.h"
 #include "libstrongswan/library.h"
 
-#define N 2 // Number of times we measure each function
+#define NTESTS 1000 // Number of times we measure each function
 #include "timer.h"
 
 
 static u_int key_strength[] = { 128, 160, 192 };
 
 
-void fill_random_string(char *str, int size){
+static void fill_random_string(char *str, int size){
   FILE *randomData = fopen("/dev/urandom", "r");
   int r;
-  //ifstream urandom("/dev/urandom", ios::in|ios::binary);
-  //urandom.read(reinterpret_cast<char*>(str), size);
-  //urandom.close();
   r = fread(str, 1, size - 1, randomData);
   str[r] = '\0';
   fclose(randomData);
@@ -37,7 +34,7 @@ void test_bliss(u_int key_type){
     return;
   }
 
-  for(i = 0; i < N; i ++){
+  for(i = 0; i < NTESTS; i ++){
     TIMER_BEGIN();
     privkey = lib->creds->create(lib->creds, CRED_PRIVATE_KEY, KEY_BLISS,
 				 BUILD_KEY_SIZE, key_type, BUILD_END);
@@ -49,7 +46,7 @@ void test_bliss(u_int key_type){
   TIMER_RESULT("KeyGen");
 
 
-  for(i = 0; i < N; i ++){
+  for(i = 0; i < NTESTS; i ++){
     char msg[128];
     chunk_t msg2;
     privkey = lib->creds->create(lib->creds, CRED_PRIVATE_KEY, KEY_BLISS,
@@ -68,7 +65,7 @@ void test_bliss(u_int key_type){
   TIMER_RESULT("Sign");
 
 
-  for(i = 0; i < N; i ++){
+  for(i = 0; i < NTESTS; i ++){
     char msg[128];
     chunk_t msg2;
     int verify;
