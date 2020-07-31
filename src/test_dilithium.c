@@ -59,7 +59,7 @@ int test_dilithium(void){
   }
   TIMER_RESULT("Verify");
 
-  printf("'σ'    size: %d bytes\n", (int) mlen);
+  printf("'σ'    size: %d bytes\n", (int) smlen);
   printf("'PK'   size: %d bytes\n", CRYPTO_PUBLICKEYBYTES);
   printf("'SK'   size: %d bytes\n", CRYPTO_SECRETKEYBYTES);
   return 0;

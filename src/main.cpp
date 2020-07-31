@@ -8,6 +8,7 @@
 #include "context.h"
 #include "test_bliss.h"
 #include "test_dilithium.h"
+#include "test_falcon.h"
 
 #define NTESTS 1000 // Number of times we measure each function
 #include "timer.h"
@@ -335,12 +336,13 @@ void test_ecdsa(int nid){
 
 int main(int argc, char **argv){
 
-  //test_rsa(2048);
-  //test_ecdsa(NID_sect233r1);
+  test_rsa(2048);
+  test_ecdsa(NID_sect233r1);
   test_dilithium();
-  //test_bliss(BLISS_B_I);
-  //test_chameleon_hash(512, 27, 2);
-  //test_gpv_signature(512, 27, 2);
+  test_falcon();
+  test_bliss(BLISS_B_I);
+  test_chameleon_hash(512, 27, 2);
+  test_gpv_signature(512, 27, 2);
   
   return 0;
 }
